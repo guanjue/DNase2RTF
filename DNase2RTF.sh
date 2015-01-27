@@ -21,7 +21,7 @@ DNase2RTF(){
     ### Merge the pks of target cell and source cell
     ##########################
     echo 'Merge the pks of target cell and source cell'
-    if ( bash bash format_scripts_bash.sh allpks_bed_names.txt all_pks.bed )
+    if ( bash format_scripts_bash.sh allpks_bed_names.txt all_pks.bed )
         then
             echo 'successfully putting all bedfiles into one bed file'
     else
