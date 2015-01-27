@@ -27,6 +27,7 @@ DNase2RTF(){
     else
             echo ERROR: 'Please recheck bed files'
             exit 1
+    fi
 
     echo 'Sorting pks'
     if ( sortBed -i all_pks.bed > all_pks_sorted.bed )
