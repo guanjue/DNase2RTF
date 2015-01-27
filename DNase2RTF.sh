@@ -81,6 +81,7 @@ DNase2RTF(){
     else
             echo ERROR: 'Getting midpoints'
             exit 1
+    fi
 
     echo 'Getting midpoints Successfully DONE' 
     ##########################
