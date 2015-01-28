@@ -15,7 +15,7 @@ def dreme2meme(name):
         if records.split()!=[]:
             if records.split()[0] != '#':
                 data1.append(records)
-        else:
+        elif data1!=[]:
             data1.append(records)
     result = open(name+'.meme','w')
 

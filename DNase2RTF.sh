@@ -3,31 +3,33 @@
 #  
 #
 #  Created by Guanjue Xiang on 1/26/15.
+source format_scripts_bash.sh
 
 DNase2RTF(){
     arg_folder=$1
     Tcell_type=$2
     Scell_type=$3
-    refseq_expan=$4
-    rmsk=$5
-    species_genome=$6
-    Targetcell_experiment=$7
-    Sourcecell_experiment=$8
-    window=$9
-
-
+	genome_fasta=$4
+    refseq_expan=$5
+    rmsk=$6
+    species_genome=$7
+    Targetcell_experiment=$8
+    Sourcecell_experiment=$9
+    window=${10}
+	topsigpks=${11}
+	topfoldpks=${12}
     cd $arg_folder
 
     ### Merge the pks of target cell and source cell
     ##########################
     echo 'Merge the pks of target cell and source cell'
-    if ( bash format_scripts_bash.sh allpks2onepk_bed allpks_bed_names.txt all_pks.bed )
+    if ( allpks2onepk_bed allpks_bed_names.txt all_pks.bed )
         then
             echo 'successfully putting all bedfiles into one bed file'
     else
             echo ERROR: 'Please recheck bed files'
             exit 1
-    fi
+	fi
 
     echo 'Sorting pks'
     if ( sortBed -i all_pks.bed > all_pks_sorted.bed )
@@ -75,20 +77,19 @@ DNase2RTF(){
 
     ### Get midpoints of the all_pks_sorted_merged_noTxexpan_normsk
     echo 'Getting midpoints'
-    if ( bash format_scripts_bash.sh bed2mid all_pks_sorted_merged_noTxexpan_normsk.bed )
+    if ( bed2mid all_pks_sorted_merged_noTxexpan_normsk.bed )
         then 
             echo 'Successfully Got midpoints'
     else
             echo ERROR: 'Getting midpoints'
             exit 1
-    fi
-
+	fi
     echo 'Getting midpoints Successfully DONE' 
     ##########################
 
 
     ### pull out reads counts of the pks
-    if ( bash format_scripts.sh bed2readscount $species_genome $Targetcell_experiment all_pks_sorted_merged_noTxexpan_normsk.bed.mid $window T_reads_signal)
+    if ( bed2readscount "$species_genome" "$Targetcell_experiment" all_pks_sorted_merged_noTxexpan_normsk.bed.mid $window T_reads_signal)
         then
             echo 'Successfully pull out reads counts of target cell experiments'
     else
@@ -96,7 +97,7 @@ DNase2RTF(){
             exit 1
     fi
 
-    if ( bash format_scripts.sh bed2readscount $species_genome $Sourcecell_experiment all_pks_sorted_merged_noTxexpan_normsk.bed.mid $window S_reads_signal)
+    if ( bed2readscount "$species_genome" "$Sourcecell_experiment" all_pks_sorted_merged_noTxexpan_normsk.bed.mid $window S_reads_signal)
         then
             echo 'Successfully pull out reads counts of source cell experiments'
     else
@@ -107,7 +108,7 @@ DNase2RTF(){
 
 
     echo 'extract target cell pks with highest target cell signals and source cell pks with highest source cell signals, then further extract the pks with highest fold changes'
-    if ( bash format_scripts_bash.sh get_top_pks T_reads_signal S_reads_signal 3000 1500 0 )
+    if ( get_top_pks T_reads_signal S_reads_signal $topsigpks $topfoldpks )
         then
             echo 'successfully pulled out the top pks with top fold change'
     else
@@ -115,7 +116,7 @@ DNase2RTF(){
             exit 1
     fi
 
-    if ( bash format_scripts_bash.sh edgeR2bed target_high.pks $genome_fasta) && ( bash format_scripts_bash.sh edgeR2bed source_high.pks $genome_fasta) 
+    if ( edgeR2bed target_high.pks $genome_fasta) && ( edgeR2bed source_high.pks $genome_fasta) 
         then 
             echo 'successfully pulled out the top pks with top fold change in a bed format (target/source_high.pks.bed) and fasta format (target/source_high.pks.bed.fasta)'
     else
@@ -128,6 +129,7 @@ DNase2RTF(){
     ### Use DREME to detect motifs enriched in target cell (source cell as background) 
     ##########################
     echo 'Use DREME to detect motifs enriched in target cell (source cell as background)'
+	rm -r $Tcell_type'_dreme_result'
     if ( dreme -mink 6 -maxk 8 -oc $Tcell_type'_dreme_result'  -p target_high.pks.bed.fasta -n source_high.pks.bed.fasta -e 0.001 )
         then 
             echo 'successfully run DREME to detect motifs enriched in target cell (source cell as background)'
@@ -136,8 +138,9 @@ DNase2RTF(){
             exit 1
     fi
     
+	cp format_scripts_python.py $Tcell_type'_dreme_result'
     cd $Tcell_type'_dreme_result'
-    if ( python format_scripts_python.py dreme2meme('dreme.txt') )
+    if ( python -c "import format_scripts_python; format_scripts_python.dreme2meme('dreme.txt')" )
         then 
             echo 'successfully converted DREME result to MEME format'
     else
@@ -149,7 +152,7 @@ DNase2RTF(){
 
     ### Use STAMP to match the DREME found motifs with familial motifs
     ##########################
-    if ( perl ~/group/software/stamp/FormatMatrices.pl dreme.txt.meme dreme.txt.meme.transfac )
+    if ( perl ~/work/bin/FormatMatrices.pl dreme.txt.meme dreme.txt.meme.transfac )
         then
             echo 'successfully converted MEME result to TRANSFAC format'
     else
@@ -164,7 +167,7 @@ DNase2RTF(){
             echo ERROR: 'Please recheck dreme.txt.meme.transfac'
             exit 1
     fi
-
+	cd ..
 
 }
-DNase2RTF ~/group/projects/guanjue/PIPELINE_results/islet_acinar islet Acinar ~/group/projects/guanjue/genome_data/refGene_outer-coords_10000expan.mm9.txt ~/group/projects/guanjue/genome_data/mm9rmsk "Mus musculus;mm9" "Zhou Islet ATACseq C57BL6-129;bowtie_unique" "Zhou Acinar DnaseSeq(50-100) C57BL6-129;bowtie2_unique" 150
+DNase2RTF ~/group/projects/guanjue/PIPELINE_results/01262015_test_pipe islet Acinar ~/group/projects/guanjue/genome_data/mm9.fa ~/group/projects/guanjue/genome_data/refGene_outer-coords_10000expan.mm9.txt ~/group/projects/guanjue/genome_data/mm9rmsk "Mus musculus;mm9" "Zhou Islet ATACseq C57BL6-129;bowtie_unique" "Zhou Acinar DnaseSeq(50-100) C57BL6-129;bowtie2_unique" 150 800 500

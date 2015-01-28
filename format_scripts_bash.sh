@@ -18,7 +18,7 @@ allpks2onepk_bed(){
 }
 ############
 ##########################
-
+#allpks2onepk_bed allpks_bed_names.txt all_pks.bed 
 
 ##########################
 ############
@@ -54,7 +54,11 @@ get_top_pks(){
     remove_interm=$5
     # put target signal and source signal into one file
     paste $target_sig $source_sig > TS_sig_OD
-    cat TS_sig_OD | awk -F '\t' -v OFS='\t' '{print $1,$2,$4,($2+1)/($4+1)}' > TS_sig.txt
+	tail -n +2 TS_sig_OD > TS_sig_OD_noheader
+	cat TS_sig_OD_noheader | awk -F '\t' -v OFS='\t' '{print $1,$2+1,$4+1}' > TS_sig_noheader
+	sort TS_sig_noheader | uniq > TS_sig_noheader_uniq
+	echo -e "pks\tT_sig\tS_sig" | cat - TS_sig_noheader_uniq > temp && mv temp TS_sig_EdgeR
+    cat TS_sig_OD_noheader | awk -F '\t' -v OFS='\t' '{print $1,$2,$4,($2+1)/($4+1)}' > TS_sig.txt
     # pull out the pks with highest signal in target cell
     sort -k2,1nr TS_sig.txt > T_sig_sorted.txt
     head -$top_num_sig T_sig_sorted.txt > T_sig_sorted_top.txt
@@ -70,17 +74,17 @@ get_top_pks(){
     # get the top fold pks of target & source cell
     sort -k4,1nr TS_sig_sorted_top_uniq.txt |head -$top_num_fold | awk -F '\t' -v OFS='\t' '{print $1}'> target_high.pks
     sort -k4,1nr TS_sig_sorted_top_uniq.txt |tail -$top_num_fold | awk -F '\t' -v OFS='\t' '{print $1}'> source_high.pks
-    # remove data
-    if !($remove_interm == 0)
-        then
-            rm TS_sig_OD
-            rm TS_sig.txt
-            rm T_sig_sorted.txt
-            rm S_sig_sorted.txt
-            rm T_sig_sorted_top.txt
-            rm S_sig_sorted_top.txt
-            rm TS_sig_sorted_top.txt
-    fi
+    # remove intermediate data
+	echo 'remove intermediate data'
+	rm TS_sig_OD_noheader
+	rm TS_sig_OD_noheader_uniq
+	rm TS_sig_noheader
+    rm TS_sig.txt
+    rm T_sig_sorted.txt
+    rm S_sig_sorted.txt
+    rm T_sig_sorted_top.txt
+    rm S_sig_sorted_top.txt
+    rm TS_sig_sorted_top.txt
 }
 ############
 ##########################
@@ -115,9 +119,9 @@ bed2readscount(){
     outputname=$5
     if ( "$experiments" == 'Zhou Islet ATACseq C57BL6-129;bowtie_unique' )
         then
-            java -cp ~/group/code/seqcode.mahonylab.jar  edu.psu.compbio.seqcode.projects.shaun.PeaksAnalysis --species "$species_genome" --peaks $midfile --out $outputname --rdbexpt $experiments --win $window --counts --fixedpb 1
+            java -cp ~/group/code/seqcode.mahonylab.jar  edu.psu.compbio.seqcode.projects.shaun.PeaksAnalysis --species "$species_genome" --peaks $midfile --out $outputname --rdbexpt "$experiments" --win $window --counts --fixedpb 1
     else
-            java -cp ~/group/code/seqcode.mahonylab.jar  edu.psu.compbio.seqcode.projects.shaun.PeaksAnalysis --species "$species_genome" --peaks $midfile --out $outputname --rdbexpt $experiments --win $window --counts
+            java -cp ~/group/code/seqcode.mahonylab.jar  edu.psu.compbio.seqcode.projects.shaun.PeaksAnalysis --species "$species_genome" --peaks $midfile --out $outputname --rdbexpt "$experiments" --win $window --counts
     fi
 
 }
